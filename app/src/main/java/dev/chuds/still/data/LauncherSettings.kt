@@ -55,6 +55,7 @@ data class LauncherSettings(
     val clockFormat: ClockFormat = ClockFormat.Auto,
     val showDate: Boolean = true,
     val showHomeHint: Boolean = true,
+    val showBattery: Boolean = false,
     val showAppIcons: Boolean = false,
     val fontPreset: FontPreset = FontPreset.System,
     val hapticsEnabled: Boolean = true,

@@ -102,6 +102,10 @@ fun StillApp() {
             uiState = uiState,
             onLaunchSlot = ::launchSlot,
             onEditSlot = { index -> route = StillRoute.SlotEdit(index, ReturnTo.Home) },
+            onReplaceSlot = { index ->
+                homeViewModel.refreshApps()
+                route = StillRoute.AppPicker(index, ReturnTo.Home)
+            },
             onOpenAllApps = {
                 homeViewModel.refreshApps()
                 route = StillRoute.AllApps
@@ -157,6 +161,9 @@ fun StillApp() {
             onToggleShowAppIcons = {
                 homeViewModel.setShowAppIcons(!uiState.settings.showAppIcons)
             },
+            onToggleShowBattery = {
+                homeViewModel.setShowBattery(!uiState.settings.showBattery)
+            },
             onCycleFontPreset = {
                 val next = when (uiState.settings.fontPreset) {
                     FontPreset.System -> FontPreset.Editorial
@@ -174,6 +181,7 @@ fun StillApp() {
                 route = StillRoute.DrawerExceptions(ReturnTo.Settings)
             },
             onOpenIntents = { route = StillRoute.Intents(ReturnTo.Settings) },
+            onImportSettings = homeViewModel::importSettings,
             onBack = { route = StillRoute.AllApps },
         )
 

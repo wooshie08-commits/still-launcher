@@ -25,6 +25,7 @@ private val CLOCK_FORMAT_KEY = stringPreferencesKey("clock_format")
 private val SHOW_DATE_KEY = booleanPreferencesKey("show_date")
 private val SHOW_HOME_HINT_KEY = booleanPreferencesKey("show_home_hint")
 private val SHOW_APP_ICONS_KEY = booleanPreferencesKey("show_app_icons")
+private val SHOW_BATTERY_KEY = booleanPreferencesKey("show_battery")
 private val FONT_PRESET_KEY = stringPreferencesKey("font_preset")
 private val HAPTICS_ENABLED_KEY = booleanPreferencesKey("haptics_enabled")
 private val FIRST_LAUNCH_COMPLETED_KEY = booleanPreferencesKey("first_launch_completed")
@@ -107,6 +108,12 @@ class PreferencesRepository(
         }
     }
 
+    suspend fun setShowBattery(show: Boolean) {
+        context.stillPreferencesDataStore.edit { preferences ->
+            preferences[SHOW_BATTERY_KEY] = show
+        }
+    }
+
     suspend fun setFontPreset(preset: FontPreset) {
         context.stillPreferencesDataStore.edit { preferences ->
             preferences[FONT_PRESET_KEY] = preset.name
@@ -159,6 +166,31 @@ class PreferencesRepository(
             preferences[FIRST_LAUNCH_COMPLETED_KEY] = true
         }
     }
+
+    /**
+     * Replaces all persisted state with an imported settings snapshot. Used by the settings
+     * import flow; the file was authored by this app's export, so defaults inside the snapshot
+     * are trusted (they were produced from real persisted state).
+     */
+    suspend fun applyImported(settings: LauncherSettings) {
+        context.stillPreferencesDataStore.edit { preferences ->
+            preferences.clear()
+            LauncherPreferencesCodec.writeSlots(preferences, settings.slots)
+            preferences[SLOT_COUNT_KEY] = settings.slotCount.coerceIn(1, MAX_SLOT_COUNT)
+            preferences[CLOCK_FORMAT_KEY] = settings.clockFormat.name
+            preferences[SHOW_DATE_KEY] = settings.showDate
+            preferences[SHOW_HOME_HINT_KEY] = settings.showHomeHint
+            preferences[SHOW_BATTERY_KEY] = settings.showBattery
+            preferences[SHOW_APP_ICONS_KEY] = settings.showAppIcons
+            preferences[FONT_PRESET_KEY] = settings.fontPreset.name
+            preferences[HAPTICS_ENABLED_KEY] = settings.hapticsEnabled
+            preferences[FIRST_LAUNCH_COMPLETED_KEY] = settings.firstLaunchCompleted || settings.slots.any { it.isSet }
+            preferences[DRAWER_FRICTION_MODE_KEY] = settings.drawerFrictionMode.name
+            if (settings.drawerFrictionExceptions.isNotEmpty()) {
+                preferences[DRAWER_FRICTION_EXCEPTIONS_KEY] = settings.drawerFrictionExceptions
+            }
+        }
+    }
 }
 
 internal object LauncherPreferencesCodec {
@@ -180,6 +212,7 @@ internal object LauncherPreferencesCodec {
                 ?: ClockFormat.Auto,
             showDate = preferences[SHOW_DATE_KEY] ?: true,
             showHomeHint = preferences[SHOW_HOME_HINT_KEY] ?: true,
+            showBattery = preferences[SHOW_BATTERY_KEY] ?: false,
             showAppIcons = preferences[SHOW_APP_ICONS_KEY] ?: false,
             fontPreset = (preferences[FONT_PRESET_KEY])
                 ?.let { runCatching { FontPreset.valueOf(it) }.getOrNull() }

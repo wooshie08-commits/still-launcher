@@ -12,6 +12,7 @@ import dev.chuds.still.data.FontPreset
 import dev.chuds.still.data.IntentJournalRepository
 import dev.chuds.still.data.LaunchableApp
 import dev.chuds.still.data.LauncherSettings
+import dev.chuds.still.data.SettingsExporter
 import dev.chuds.still.launcher.AppLauncher
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -27,6 +28,9 @@ data class ResolvedSlot(
     val app: LaunchableApp?,
 ) {
     val isLaunchable: Boolean get() = app != null
+
+    /** Slot config exists but the app isn't installed (or isn't launchable) any more. */
+    val isMissing: Boolean get() = !isLaunchable && slot.isSet
     val displayLabel: String? get() = slot.resolvedLabel(app)
 }
 
@@ -43,6 +47,10 @@ data class HomeUiState(
     /** Only filled slots within the configured count. Used by Home. */
     val homeSlots: List<ResolvedSlot>
         get() = configuredSlots.filter { it.isLaunchable }
+
+    /** Filled slots plus slots whose app went missing (shown as replaceable on Home). */
+    val presentableSlots: List<ResolvedSlot>
+        get() = configuredSlots.filter { it.isLaunchable || it.slot.isSet }
 
     /** True when this slot points at the system Settings app — friction is forbidden there. */
     fun isSystemSettings(slot: ResolvedSlot): Boolean {
@@ -143,6 +151,16 @@ class HomeViewModel(
         viewModelScope.launch { intentJournalRepository.clear() }
     }
 
+    /**
+     * Applies an exported settings snapshot. Returns false without touching state when the
+     * text isn't a still settings file.
+     */
+    fun importSettings(json: String): Boolean {
+        val parsed = SettingsExporter.fromJson(json) ?: return false
+        viewModelScope.launch { appRepository.applyImported(parsed) }
+        return true
+    }
+
     fun setSlotApp(index: Int, app: LaunchableApp) {
         viewModelScope.launch { appRepository.setSlotApp(index, app) }
     }
@@ -179,6 +197,10 @@ class HomeViewModel(
 
     fun setShowAppIcons(show: Boolean) {
         viewModelScope.launch { appRepository.setShowAppIcons(show) }
+    }
+
+    fun setShowBattery(show: Boolean) {
+        viewModelScope.launch { appRepository.setShowBattery(show) }
     }
 
     fun setFontPreset(preset: FontPreset) {

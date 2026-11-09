@@ -1,5 +1,10 @@
 package dev.chuds.still.ui.home
 
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
+import android.os.BatteryManager
 import android.text.format.DateFormat
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -14,6 +19,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -34,8 +40,10 @@ import kotlinx.coroutines.delay
 /**
  * The home surface.
  *
- * No wordmark. Clock + optional date, then only the slots the user has filled (within the
- * configured count). No `add app` placeholders — to add a slot, open settings.
+ * No wordmark. Clock + optional date + optional battery, then only the slots the user has filled
+ * (within the configured count). Slots that point at an uninstalled app stay listed as
+ * `missing` so the mapping can be replaced with one tap. No `add app` placeholders — adding a
+ * slot happens in settings.
  *
  * Long-press background → all apps. Tap date → intents journal.
  */
@@ -45,11 +53,13 @@ fun HomeScreen(
     uiState: HomeUiState,
     onLaunchSlot: (Int) -> Unit,
     onEditSlot: (Int) -> Unit,
+    onReplaceSlot: (Int) -> Unit,
     onOpenAllApps: () -> Unit,
     onOpenIntents: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var now by remember { mutableStateOf(LocalDateTime.now()) }
+    var batteryPct by remember { mutableStateOf(-1) }
     val backgroundInteractionSource = remember { MutableInteractionSource() }
     val dateInteractionSource = remember { MutableInteractionSource() }
     val context = LocalContext.current
@@ -58,6 +68,22 @@ fun HomeScreen(
         while (true) {
             now = LocalDateTime.now()
             delay(1_000)
+        }
+    }
+
+    if (uiState.settings.showBattery) {
+        DisposableEffect(Unit) {
+            val receiver = object : BroadcastReceiver() {
+                override fun onReceive(c: Context, i: Intent) {
+                    batteryPct = batteryPercent(i)
+                }
+            }
+            val filter = IntentFilter(Intent.ACTION_BATTERY_CHANGED)
+            val sticky = context.registerReceiver(receiver, filter)
+            if (sticky != null) batteryPct = batteryPercent(sticky)
+            onDispose {
+                runCatching { context.unregisterReceiver(receiver) }
+            }
         }
     }
 
@@ -104,13 +130,30 @@ fun HomeScreen(
             )
         }
 
+        if (uiState.settings.showBattery && batteryPct >= 0) {
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = "$batteryPct%",
+                style = StillTypography.Caption,
+                color = StillColors.DimGray,
+            )
+        }
+
         Spacer(modifier = Modifier.weight(1f))
 
-        uiState.homeSlots.forEach { resolved ->
+        uiState.presentableSlots.forEach { resolved ->
+            val missing = resolved.isMissing
             StillMenuItem(
-                title = resolved.displayLabel.orEmpty(),
-                subtitle = if (resolved.slot.useFriction) "use intentionally" else null,
-                onClick = { onLaunchSlot(resolved.slot.index) },
+                title = resolved.displayLabel ?: "slot ${resolved.slot.index + 1}",
+                subtitle = when {
+                    missing -> "not installed — tap to replace"
+                    resolved.slot.useFriction -> "use intentionally"
+                    else -> null
+                },
+                titleColor = if (missing) StillColors.Gray else StillColors.SoftWhite,
+                onClick = {
+                    if (missing) onReplaceSlot(resolved.slot.index) else onLaunchSlot(resolved.slot.index)
+                },
                 onLongClick = { onEditSlot(resolved.slot.index) },
             )
         }
@@ -126,4 +169,10 @@ fun HomeScreen(
             Spacer(modifier = Modifier.height(4.dp))
         }
     }
+}
+
+private fun batteryPercent(intent: Intent): Int {
+    val level = intent.getIntExtra(BatteryManager.EXTRA_LEVEL, -1)
+    val scale = intent.getIntExtra(BatteryManager.EXTRA_SCALE, -1)
+    return if (level >= 0 && scale > 0) level * 100 / scale else -1
 }

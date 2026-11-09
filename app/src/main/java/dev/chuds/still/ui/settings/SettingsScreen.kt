@@ -1,5 +1,7 @@
 package dev.chuds.still.ui.settings
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -9,12 +11,19 @@ import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import dev.chuds.still.data.ClockFormat
 import dev.chuds.still.data.DrawerFrictionMode
 import dev.chuds.still.data.FontPreset
 import dev.chuds.still.data.MAX_SLOT_COUNT
+import dev.chuds.still.data.SettingsExporter
 import dev.chuds.still.ui.components.StillMenuItem
 import dev.chuds.still.ui.components.StillSectionCard
 import dev.chuds.still.ui.home.HomeUiState
@@ -30,15 +39,39 @@ fun SettingsScreen(
     onToggleShowDate: () -> Unit,
     onToggleShowHomeHint: () -> Unit,
     onToggleShowAppIcons: () -> Unit,
+    onToggleShowBattery: () -> Unit,
     onCycleFontPreset: () -> Unit,
     onToggleHaptics: () -> Unit,
     onCycleDrawerFrictionMode: () -> Unit,
     onOpenDrawerExceptions: () -> Unit,
     onOpenIntents: () -> Unit,
+    onImportSettings: (String) -> Boolean,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val settings = uiState.settings
+    val context = LocalContext.current
+    val currentSettings by rememberUpdatedState(settings)
+    var dataStatus by remember { mutableStateOf<String?>(null) }
+
+    val exportLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("application/json"),
+    ) { uri ->
+        uri ?: return@rememberLauncherForActivityResult
+        val content = SettingsExporter.toJson(currentSettings)
+        dataStatus = if (SettingsExporter.writeToUri(context, uri, content)) "exported" else "could not write file"
+    }
+    val importLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument(),
+    ) { uri ->
+        uri ?: return@rememberLauncherForActivityResult
+        val text = SettingsExporter.readFromUri(context, uri)
+        if (text == null) {
+            dataStatus = "could not read file"
+        } else {
+            dataStatus = if (onImportSettings(text)) "imported" else "not a still settings file"
+        }
+    }
 
     LazyColumn(
         modifier = modifier
@@ -97,6 +130,12 @@ fun SettingsScreen(
                     onClick = onToggleShowAppIcons,
                 )
                 StillMenuItem(
+                    title = "battery line",
+                    subtitle = if (settings.showBattery) "on  —  percent under the date" else "off",
+                    style = StillTypography.SecondaryMenu,
+                    onClick = onToggleShowBattery,
+                )
+                StillMenuItem(
                     title = "font",
                     subtitle = fontPresetLabel(settings.fontPreset),
                     style = StillTypography.SecondaryMenu,
@@ -147,6 +186,34 @@ fun SettingsScreen(
                         onClick = { onChooseSlot(resolved.slot.index) },
                     )
                 }
+            }
+            Spacer(modifier = Modifier.height(20.dp))
+        }
+
+        item {
+            SectionHeading("data")
+            StillSectionCard {
+                StillMenuItem(
+                    title = "export settings",
+                    subtitle = "one json file — slots + prefs",
+                    style = StillTypography.SecondaryMenu,
+                    onClick = { exportLauncher.launch("still-settings.json") },
+                )
+                StillMenuItem(
+                    title = "import settings",
+                    subtitle = "replaces slots and prefs",
+                    style = StillTypography.SecondaryMenu,
+                    onClick = { importLauncher.launch(arrayOf("application/json", "text/*")) },
+                )
+            }
+            if (dataStatus != null) {
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(
+                    text = dataStatus.orEmpty(),
+                    style = StillTypography.Caption,
+                    color = StillColors.DimGray,
+                    modifier = Modifier.padding(start = 2.dp),
+                )
             }
             Spacer(modifier = Modifier.height(20.dp))
         }

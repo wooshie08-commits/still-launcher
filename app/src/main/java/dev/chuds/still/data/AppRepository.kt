@@ -58,6 +58,12 @@ class AppRepository(
     suspend fun setShowAppIcons(show: Boolean) =
         preferencesRepository.setShowAppIcons(show)
 
+    suspend fun setShowBattery(show: Boolean) =
+        preferencesRepository.setShowBattery(show)
+
+    suspend fun applyImported(settings: LauncherSettings) =
+        preferencesRepository.applyImported(settings)
+
     suspend fun setFontPreset(preset: FontPreset) =
         preferencesRepository.setFontPreset(preset)
 

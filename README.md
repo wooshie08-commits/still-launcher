@@ -27,8 +27,9 @@ It declares no internet permission. It ships no analytics. It depends on neither
 - Each slot opens an app you choose, with a label you choose. Mappings persist locally in Preferences DataStore.
 - Any slot can be marked **use intentionally** — tapping it opens an intent prompt (*Use this intentionally. what for?*) before launching. Type a sentence, press Done, and the app opens. (Settings is exempt — it's the escape hatch and must always be one tap away.)
 - An **intent journal** records what you typed every time you launched something through the prompt. Tap the date on the home screen to read back through it. Still doesn't block anything; it just remembers what you said you'd do.
-- **Configurable**: slot count (1–10), 12/24-hour clock, date toggle, home-hint toggle, per-slot friction. Every choice is yours to make.
-- Long-press the home background to reveal a hidden all-apps list and settings.
+- **Configurable**: slot count (1–10), 12/24-hour clock (or follow the system), date toggle, home-hint toggle, optional battery-percent line (off by default), per-slot friction. Every choice is yours to make.
+- **Settings travel with you**: the whole configuration exports/imports as one plain JSON file through the system file picker — slots, labels, friction, format, everything. Plaintext, inspectable, no cloud.
+- Long-press the home background to reveal a hidden all-apps list (with a text-only search) and settings.
 
 ## The intent journal
 
@@ -46,7 +47,7 @@ The journal lives entirely on-device in a separate Preferences DataStore (`still
 - No `QUERY_ALL_PACKAGES`. Package visibility is scoped to launcher/default-intent `<queries>` only.
 - No analytics, no telemetry, no Firebase, no Google Play Services, no ads.
 - No cloud backup of settings or journal — `data_extraction_rules.xml` excludes every domain.
-- No icons on the home. No widgets. No default app drawer. No search. No notification listener. No accessibility service. No `+` buttons. No branding.
+- No icons on the home. No widgets. No default app drawer — the hidden all-apps list is text-only, with a plain-label search. No notification listener. No accessibility service. No `+` buttons. No branding.
 
 ## Privacy posture, in code
 

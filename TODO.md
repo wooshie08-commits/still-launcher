@@ -8,17 +8,13 @@
 
 2. ~~Add default app mapping quality pass for GrapheneOS~~ — **dropped.** Slots are now anonymous and start empty; first-boot heuristics no longer apply.
 
-3. **Handle uninstalled mapped apps gracefully**
-   - When the stored ComponentName no longer resolves, the home now shows the slot as `missing` (subtitle).
-   - Still missing: a one-tap "find replacement" affordance from the edit sheet.
+3. ~~**Handle uninstalled mapped apps gracefully**~~ — **released 0.2.0.** The home lists
+   missing slots as replaceable (`not installed — tap to replace`) and tapping them opens the
+   app picker directly.
 
-4. **Add empty-state copy for app picker**
-   - Show a calm explanation if no launchable apps are visible.
-   - Include a note about Android package visibility.
+4. ~~**Add empty-state copy for app picker**~~ — **already shipped upstream** (`EmptyAppsHint`).
 
-5. **Add optional 12-hour / 24-hour setting**
-   - Current MVP uses 24-hour time.
-   - DataStore setting should remain local.
+5. ~~**Add optional 12-hour / 24-hour setting**~~ — **already shipped upstream** (`ClockFormat`).
 
 ## Design polish
 
@@ -42,10 +38,17 @@
 
 ## Launcher features
 
-10. **Add app search on hidden all-apps screen**
-    - Text-only.
-    - No fuzzy dopamine ranking.
-    - No telemetry.
+10. ~~**Add app search on hidden all-apps screen**~~ — **already shipped upstream** (`AllAppsScreen` search field).
+
+14. **Settings migration across devices**
+    - Export/import the whole configuration as one JSON file (shipped 0.2.0; lives alongside the
+      journal export under the plaintext-forever pact).
+    - Future: an Android share-sheet target so receiving a settings file opens Still directly.
+
+15. **Add a home-status line beyond battery**
+    - Optional battery percent shipped 0.2.0 (default off, honest read-only broadcasts).
+    - Future candidates in the same slot: next DND window, current calendar day marker — each
+      must stay honest, load-bearing, and off by default.
 
 11. **Per-slot friction — extend beyond the binary toggle**
     - Each slot now has a `useFriction: Boolean` flag toggled from the long-press edit sheet; tapping a friction-gated slot routes through `FrictionScreen`.
